@@ -30,8 +30,9 @@ PKGROOT=/tmp/pkgroot
 DUID ?= $(shell id -u)
 DGID ?= $(shell id -g)
 DESCRIPTION := A redis utility that reposts statistics to zenoss metric consumer
+GODEPS_FILES := $(shell find Godeps/)
 
-redis-mon: VERSION *.go hack/* makefile
+redis-mon: VERSION *.go hack/* makefile $(GODEPS_FILES)
 	godep go build ${LDFLAGS}
 	chown $(DUID):$(DGID) $(FULL_NAME)
 

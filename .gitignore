@@ -3,6 +3,10 @@
 *.a
 *.so
 
+redis-mon
+*.rpm
+*.dep
+
 # Folders
 _obj
 _test

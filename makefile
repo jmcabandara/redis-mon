@@ -36,6 +36,9 @@ redis-mon: VERSION *.go hack/* makefile $(GODEPS_FILES)
 	godep go build ${LDFLAGS}
 	chown $(DUID):$(DGID) $(FULL_NAME)
 
+docker-tgz: redis-mon-build
+	docker run -rm -v `pwd`:/go/src/github.com/zenoss/redis-mon -e DUID=$(DUID) -e DGID=$(DGID) zenoss/redis-mon-build:$(VERSION) make tgz
+
 docker-deb: redis-mon-build
 	docker run -rm -v `pwd`:/go/src/github.com/zenoss/redis-mon -e DUID=$(DUID) -e DGID=$(DGID) zenoss/redis-mon-build:$(VERSION) make deb
 

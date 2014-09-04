@@ -52,6 +52,11 @@ stage_pkg: redis-mon
 	mkdir -p /tmp/pkgroot/usr/bin
 	cp -v redis-mon /tmp/pkgroot/usr/bin
 
+tgz: stage_pkg
+	tar cvfz /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz -C /tmp/pkgroot/usr .
+	chown $(DUID):$(DGID) /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz
+	cp -p /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz .
+
 deb: stage_pkg
 	fpm \
 		-n $(FULL_NAME) \
@@ -98,3 +103,4 @@ clean:
 	go clean
 	rm -f *.deb
 	rm -f *.rpm
+	rm -f *.tgz

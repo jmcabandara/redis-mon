@@ -3,20 +3,11 @@
 *.a
 *.so
 
-<<<<<<< Updated upstream
-redis-mon
-*.rpm
-*.dep
-
-=======
-<<<<<<< Updated upstream
-=======
 redis-mon
 *.rpm
 *.deb
+*.tgz
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 # Folders
 _obj
 _test

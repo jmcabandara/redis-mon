@@ -15,4 +15,3 @@ RUN	gem install fpm
 RUN	apt-get install -qqy mercurial
 RUN	go get github.com/tools/godep
 
-WORKDIR	/go/src/github.com/zenoss/redis-mon

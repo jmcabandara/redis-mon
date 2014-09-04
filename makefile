@@ -14,51 +14,59 @@
 # along with Foobar. If not, see <http://www.gnu.org/licenses/>.
 
 ## setup all environment stuff
-FULL_NAME = redis-mon
-VERSION := $(shell cat ./VERSION)
-DATE := $(shell date -u)
-GIT_COMMIT ?= $(shell ./hack/gitstatus.sh)
-GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+URL           = https://github.com/zenoss/redis-mon
+FULL_NAME     = $(shell basename $(URL))
+VERSION      := $(shell cat ./VERSION)
+DATE         := $(shell date -u)
+GIT_COMMIT   ?= $(shell ./hack/gitstatus.sh)
+GIT_BRANCH   ?= $(shell git rev-parse --abbrev-ref HEAD)
 # jenkins default, jenkins-${JOB_NAME}-${BUILD_NUMBER}
-BUILD_TAG ?= 0
-LDFLAGS = -ldflags "-X main.Version $(VERSION) -X main.Gitcommit '$(GIT_COMMIT)' -X main.Gitbranch '$(GIT_BRANCH)' -X main.Date '$(DATE)' -X main.Buildtag '$(BUILD_TAG)'"
-MAINTAINER = dev@zenoss.com
-LICENSE = GPLv2
-VENDOR = Zenoss
-URL = https://github.com/zenoss/redis-mon
-PKGROOT=/tmp/pkgroot
-DUID ?= $(shell id -u)
-DGID ?= $(shell id -g)
-DESCRIPTION := A redis utility that reposts statistics to zenoss metric consumer
-GODEPS_FILES := $(shell find Godeps/)
+BUILD_TAG    ?= 0
+LDFLAGS       = -ldflags "-X main.Version $(VERSION) -X main.Gitcommit '$(GIT_COMMIT)' -X main.Gitbranch '$(GIT_BRANCH)' -X main.Date '$(DATE)' -X main.Buildtag '$(BUILD_TAG)'"
 
-redis-mon: VERSION *.go hack/* makefile $(GODEPS_FILES)
+MAINTAINER    = dev@zenoss.com
+# https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-specification
+DEB_LICENSE   = "GPL-2.0"
+# https://fedoraproject.org/wiki/Licensing:Main?rd=Licensing
+RPM_LICENSE   = "GPLv2"
+VENDOR        = Zenoss
+PKGROOT       = /tmp/$(FULL_NAME)-pkgroot-$(GIT_COMMIT)
+DUID         ?= $(shell id -u)
+DGID         ?= $(shell id -g)
+DESCRIPTION  := A simple shell execution client/server using redis
+GODEPS_FILES := $(shell find Godeps/)
+FULL_PATH     = $(shell echo $(URL) | sed 's|https:/||')
+DOCKER_WDIR  := /go/src$(FULL_PATH)
+
+
+## generic workhorse targets
+$(FULL_NAME): VERSION *.go hack/* makefile $(GODEPS_FILES)
 	godep go build ${LDFLAGS}
 	chown $(DUID):$(DGID) $(FULL_NAME)
 
-docker-tgz: redis-mon-build
-	docker run -rm -v `pwd`:/go/src/github.com/zenoss/redis-mon -e DUID=$(DUID) -e DGID=$(DGID) zenoss/redis-mon-build:$(VERSION) make tgz
+docker-tgz: $(FULL_NAME)-build
+	docker run --rm -v `pwd`:$(DOCKER_WDIR) -w $(DOCKER_WDIR) -e DUID=$(DUID) -e DGID=$(DGID) zenoss/$(FULL_NAME)-build:$(VERSION) make tgz
 
-docker-deb: redis-mon-build
-	docker run -rm -v `pwd`:/go/src/github.com/zenoss/redis-mon -e DUID=$(DUID) -e DGID=$(DGID) zenoss/redis-mon-build:$(VERSION) make deb
+docker-deb: $(FULL_NAME)-build
+	docker run --rm -v `pwd`:$(DOCKER_WDIR) -w $(DOCKER_WDIR) -e DUID=$(DUID) -e DGID=$(DGID) zenoss/$(FULL_NAME)-build:$(VERSION) make deb
 
-docker-rpm: redis-mon-build
-	docker run -rm -v `pwd`:/go/src/github.com/zenoss/redis-mon -e DUID=$(DUID) -e DGID=$(DGID) zenoss/redis-mon-build:$(VERSION) make rpm
+docker-rpm: $(FULL_NAME)-build
+	docker run --rm -v `pwd`:$(DOCKER_WDIR) -w $(DOCKER_WDIR) -e DUID=$(DUID) -e DGID=$(DGID) zenoss/$(FULL_NAME)-build:$(VERSION) make rpm
 
 # actual work
-.PHONY: redis-mon-build
-redis-mon-build:
-	docker build -t zenoss/redis-mon-build:$(VERSION) hack
+.PHONY: $(FULL_NAME)-build
+$(FULL_NAME)-build:
+	docker build -t zenoss/$(FULL_NAME)-build:$(VERSION) hack
 
 
-stage_pkg: redis-mon
-	mkdir -p /tmp/pkgroot/usr/bin
-	cp -v redis-mon /tmp/pkgroot/usr/bin
+stage_pkg: $(FULL_NAME)
+	mkdir -p $(PKGROOT)/usr/bin
+	cp -v $(FULL_NAME) $(PKGROOT)/usr/bin
 
 tgz: stage_pkg
-	tar cvfz /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz -C /tmp/pkgroot/usr .
+	tar cvfz /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz -C $(PKGROOT)/usr .
 	chown $(DUID):$(DGID) /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz
-	cp -p /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz .
+	mv /tmp/$(FULL_NAME)-$(GIT_COMMIT).tgz .
 
 deb: stage_pkg
 	fpm \
@@ -72,7 +80,7 @@ deb: stage_pkg
 		--description "$(DESCRIPTION)" \
 		--deb-user root \
 		--deb-group root \
-		--license $(LICENSE) \
+		--license $(DEB_LICENSE) \
 		--vendor $(VENDOR) \
 		--url $(URL) \
 		-f -p /tmp \
@@ -80,8 +88,6 @@ deb: stage_pkg
 	chown $(DUID):$(DGID) /tmp/*.deb
 	cp -p /tmp/*.deb .
 
-
-# Make an RPM
 rpm: stage_pkg
 	fpm \
 		-n $(FULL_NAME) \
@@ -94,7 +100,7 @@ rpm: stage_pkg
 		--description "$(DESCRIPTION)" \
 		--rpm-user root \
 		--rpm-group root \
-		--license $(LICENSE) \
+		--license $(RPM_LICENSE) \
 		--vendor $(VENDOR) \
 		--url $(URL) \
 		-f -p /tmp \
@@ -107,3 +113,6 @@ clean:
 	rm -f *.deb
 	rm -f *.rpm
 	rm -f *.tgz
+	rm -fr /tmp/$(FULL_NAME)-pkgroot-*
+
+

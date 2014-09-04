@@ -50,6 +50,7 @@ func post(c *cli.Context) {
 func printVersion(c *cli.Context) {
 	fmt.Printf("Version: %s\n", Version)
 	if c.Bool("verbose") {
+		fmt.Printf("Gitcommit: %s\n", Gitcommit)
 		fmt.Printf("Gitbranch: %s\n", Gitbranch)
 		fmt.Printf("Date: %s\n", Date)
 		fmt.Printf("Buildtag: %s\n", Buildtag)

@@ -16,16 +16,22 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-	"os"
 
 	"github.com/garyburd/redigo/redis"
 )
 
 type RedisStats struct {
 	connString string
+}
+
+type RedisListLength struct {
+	RedisStats
+	listName string
 }
 
 var tags map[string]string
@@ -44,6 +50,36 @@ func NewRedisStats(connString string) *RedisStats {
 		connString: connString,
 	}
 	return s
+}
+
+func NewRedisListLength(connString, listName string) *RedisListLength {
+	return &RedisListLength{
+		RedisStats{
+			connString: connString,
+		},
+		listName,
+	}
+}
+
+func (s *RedisListLength) Read() (stats []Sample, err error) {
+	c, err := redis.Dial("tcp", s.connString)
+	if err != nil {
+		return nil, err
+	}
+	val, err := redis.Int(c.Do("LLEN", s.listName))
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().Unix()
+	stats = []Sample{
+		Sample{
+			Metric:    fmt.Sprintf("redis.%sLength", s.listName),
+			Value:     fmt.Sprintf("%d", val),
+			Timestamp: now,
+			Tags:      tags,
+		},
+	}
+	return stats, nil
 }
 
 func (s *RedisStats) Read() (stats []Sample, err error) {
@@ -73,7 +109,7 @@ func (s *RedisStats) Read() (stats []Sample, err error) {
 			Metric:    "redis." + parts[0],
 			Value:     parts[1],
 			Timestamp: now,
-			Tags: tags,
+			Tags:      tags,
 		})
 	}
 	return stats, nil

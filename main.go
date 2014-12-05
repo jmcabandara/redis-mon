@@ -1,4 +1,3 @@
-
 // Copyright (C) 2014 Zenoss, Inc
 //
 // redis-mon is free software: you can redistribute it and/or modify
@@ -10,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Foobar. If not, see <http://www.gnu.org/licenses/>.
 
@@ -46,6 +45,19 @@ func post(c *cli.Context) {
 	}
 }
 
+func postLength(c *cli.Context) {
+	sr := NewRedisListLength(c.String("port"), c.String("list"))
+	stats, err := sr.Read()
+	if err != nil {
+		log.Printf("%s", err)
+		os.Exit(1)
+	}
+	if err = Post(c.String("consumer-url"), stats); err != nil {
+		log.Printf("%s", err)
+		os.Exit(1)
+	}
+}
+
 // print version infomation
 func printVersion(c *cli.Context) {
 	fmt.Printf("Version: %s\n", Version)
@@ -55,7 +67,7 @@ func printVersion(c *cli.Context) {
 		fmt.Printf("Date: %s\n", Date)
 		fmt.Printf("Buildtag: %s\n", Buildtag)
 	}
-		
+
 }
 
 func main() {
@@ -83,11 +95,32 @@ func main() {
 			Action: post,
 		},
 		{
+			Name:  "post-length",
+			Usage: "post the length of a redis list to Zenoss's metric service",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "port",
+					Usage: "redis-server port",
+					Value: "localhost:6379",
+				},
+				cli.StringFlag{
+					Name:  "consumer-url",
+					Usage: "metric consumer url",
+					Value: "http://localhost:22350/api/metrics/store",
+				},
+				cli.StringFlag{
+					Name:  "list",
+					Usage: "list to post length of",
+				},
+			},
+			Action: postLength,
+		},
+		{
 			Name:        "version",
 			Description: "print version",
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name: "verbose",
+					Name:  "verbose",
 					Usage: "print extended version info",
 				},
 			},

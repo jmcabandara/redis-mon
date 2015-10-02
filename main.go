@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/codegangsta/cli"
 )
@@ -33,15 +34,25 @@ var options struct {
 
 // query and post metrics
 func post(c *cli.Context) {
+	now := time.Now()
 	sr := NewRedisStats(c.String("port"))
 	stats, err := sr.Read()
 	if err != nil {
 		log.Printf("%s", err)
 		os.Exit(1)
 	}
+	if c.Bool("verbose") {
+		elapsed := time.Since(now)
+		now = time.Now()
+		log.Printf("Fetched metrics in %f seconds.\n", elapsed.Seconds())
+	}
 	if err = Post(c.String("consumer-url"), stats); err != nil {
 		log.Printf("%s", err)
 		os.Exit(1)
+	}
+	if c.Bool("verbose") {
+		elapsed := time.Since(now)
+		log.Printf("Posted metrics in %f seconds.\n", elapsed.Seconds())
 	}
 }
 
@@ -90,6 +101,10 @@ func main() {
 					Name:  "consumer-url",
 					Usage: "metric consumer url",
 					Value: "http://localhost:22350/api/metrics/store",
+				},
+				cli.BoolFlag{
+					Name:  "verbose",
+					Usage: "print timing info",
 				},
 			},
 			Action: post,
